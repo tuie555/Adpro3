@@ -17,14 +17,12 @@ import se233.chapter3.model.PdfDocument;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class MainViewController {
     LinkedHashMap<String, List<FileFreq>> uniqueSets;
@@ -111,7 +109,9 @@ public class MainViewController {
                         Future<LinkedHashMap<String, List<FileFreq>>> future = executor.submit(
                                 merger);
                         uniqueSets = future.get();
-                        listView.getItems().addAll(uniqueSets.keySet());
+                        uniqueSets.forEach((word, fileFreqs) -> {
+                            listView.getItems().add(displayFormat(word, fileFreqs));
+                        });
                     } catch (Exception e) {
                         e.printStackTrace();
                     } finally {
@@ -131,8 +131,11 @@ public class MainViewController {
             System.exit(0);
         });
         listView.setOnMouseClicked(event -> {
-            List<FileFreq> listOfLinks = uniqueSets.get(listView.getSelectionModel().
-                    getSelectedItem());
+            String selected = listView.getSelectionModel().getSelectedItem();
+            // Extract the word before the first space or parenthesis
+            String wordKey = selected.split(" \\(")[0];
+            List<FileFreq> listOfLinks = uniqueSets.get(wordKey);
+
             ListView<FileFreq> popupListView = new ListView<>();
             LinkedHashMap<FileFreq, String> lookupTable = new LinkedHashMap<>();
             for (int i = 0; i < listOfLinks.size(); i++) {
@@ -154,5 +157,14 @@ public class MainViewController {
                     popup.getScene().getWindow().hide();}
         });
     });
+    }
+    private String displayFormat(String word, List<FileFreq> fileFreqs) {
+        // สร้าง list ของจำนวนความถี่
+        List<Integer> freqList = fileFreqs.stream()
+                .map(FileFreq::getFreq)
+                .sorted(Comparator.reverseOrder())
+                .collect(Collectors.toList());
+        String joined = freqList.stream().map(String::valueOf).collect(Collectors.joining(", "));
+        return word + " (" + joined + ")";
     }
 }
